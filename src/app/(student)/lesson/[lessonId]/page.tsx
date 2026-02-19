@@ -7,8 +7,9 @@ import LessonClient from './LessonClient'
 export default async function LessonPage({
   params,
 }: {
-  params: { lessonId: string }
+  params: Promise<{ lessonId: string }>
 }) {
+  const { lessonId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -31,7 +32,7 @@ export default async function LessonPage({
   const payload = await getPayload({ config })
   const lesson = await payload.findByID({
     collection: 'lessons',
-    id: params.lessonId,
+    id: lessonId,
   })
 
   if (!lesson) {
@@ -63,7 +64,7 @@ export default async function LessonPage({
     .from('lesson_progress')
     .select('*')
     .eq('student_id', user.id)
-    .eq('lesson_payload_id', params.lessonId)
+    .eq('lesson_payload_id', lessonId)
     .single()
 
   return (
