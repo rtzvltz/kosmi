@@ -109,7 +109,23 @@ alter table class_students enable row level security;
 alter table points_events enable row level security;
 alter table lesson_progress enable row level security;
 
+-- Helper functies die profiles lezen ZONDER RLS te triggeren (security definer)
+-- Dit voorkomt oneindige recursie in RLS policies die zichzelf zouden aanroepen
+create or replace function get_my_role()
+returns text as $$
+  select role from profiles where id = auth.uid()
+$$ language sql security definer stable;
+
+create or replace function get_my_school_id()
+returns uuid as $$
+  select school_id from profiles where id = auth.uid()
+$$ language sql security definer stable;
+
 -- Profiles policies
+create policy "Users can insert own profile"
+  on profiles for insert
+  with check (auth.uid() = id);
+
 create policy "Users can view own profile"
   on profiles for select
   using (auth.uid() = id);
@@ -127,15 +143,12 @@ create policy "Parents can view their children's profiles"
     )
   );
 
+-- Gebruikt get_my_role() en get_my_school_id() om recursie te vermijden
 create policy "School admins can view students in their school"
   on profiles for select
   using (
-    exists (
-      select 1 from profiles as p
-      where p.id = auth.uid()
-      and p.role = 'school_admin'
-      and p.school_id = profiles.school_id
-    )
+    get_my_role() = 'school_admin'
+    and school_id = get_my_school_id()
   );
 
 -- Subscriptions policies
@@ -189,39 +202,35 @@ create policy "Parents can view children's progress"
   );
 
 -- Schools policies
+create policy "Allow insert schools during registration"
+  on schools for insert
+  with check (true);
+
+-- Gebruikt get_my_role() en get_my_school_id() om recursie te vermijden
 create policy "School admins can view their school"
   on schools for select
   using (
-    exists (
-      select 1 from profiles
-      where profiles.id = auth.uid()
-      and profiles.role = 'school_admin'
-      and profiles.school_id = schools.id
-    )
+    get_my_role() = 'school_admin'
+    and id = get_my_school_id()
   );
 
 -- Class assignments policies
 create policy "School admins can manage classes in their school"
   on class_assignments for all
   using (
-    exists (
-      select 1 from profiles
-      where profiles.id = auth.uid()
-      and profiles.role = 'school_admin'
-      and profiles.school_id = class_assignments.school_id
-    )
+    get_my_role() = 'school_admin'
+    and school_id = get_my_school_id()
   );
 
 -- Class students policies
 create policy "School admins can manage students in their classes"
   on class_students for all
   using (
-    exists (
+    get_my_role() = 'school_admin'
+    and exists (
       select 1 from class_assignments
-      join profiles on profiles.school_id = class_assignments.school_id
-      where profiles.id = auth.uid()
-      and profiles.role = 'school_admin'
-      and class_assignments.id = class_students.class_id
+      where class_assignments.id = class_students.class_id
+        and class_assignments.school_id = get_my_school_id()
     )
   );
 
