@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "payload migrate && next build",
+    "build": "next build",
+    "migrate": "payload migrate",
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",

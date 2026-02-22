@@ -368,6 +368,9 @@ export default buildConfig({
     pool: {
       connectionString: process.env.DATABASE_URL,
     },
+    // Sync schema automatically on startup instead of running migrations at build time.
+    // Safe for new projects; replace with "payload migrate" workflow once data exists.
+    push: true,
   }),
   plugins: [
     ...(process.env.BLOB_READ_WRITE_TOKEN
