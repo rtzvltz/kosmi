@@ -24,15 +24,22 @@ export default async function StudentDashboard() {
   }
 
   // Haal werelden op uit Payload
-  const payload = await getPayload({ config })
-  const { docs: worlds } = await payload.find({
-    collection: 'worlds',
-    where: {
-      published: {
-        equals: true,
+  let worlds: any[] = []
+  try {
+    const payload = await getPayload({ config })
+    const result = await payload.find({
+      collection: 'worlds',
+      where: {
+        published: {
+          equals: true,
+        },
       },
-    },
-  })
+    })
+    worlds = result.docs
+  } catch (err) {
+    console.error('Payload connection error:', err)
+    // worlds blijft leeg array, pagina laadt gewoon
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-secondary-50">
@@ -72,7 +79,7 @@ export default async function StudentDashboard() {
 
         {/* Werelden grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {worlds.map((world) => (
+          {(worlds ?? []).map((world) => (
             <Link
               key={world.id}
               href={`/worlds/${world.slug}`}
@@ -101,7 +108,7 @@ export default async function StudentDashboard() {
           ))}
         </div>
 
-        {worlds.length === 0 && (
+        {(!worlds || worlds.length === 0) && (
           <div className="text-center py-12 bg-white rounded-xl shadow-lg">
             <p className="text-gray-600">
               Er zijn nog geen werelden beschikbaar. Kom later terug!
